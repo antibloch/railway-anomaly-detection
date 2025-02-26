@@ -267,9 +267,9 @@ def motion_blurred_image(img, steps):
 
 
 def glow_effect(img, weight, steps, sigma):
-    blurred = gaussian_filter(img, sigma=sigma, multichannel=True, preserve_range=True)
+    blurred = gaussian_filter(img, sigma=sigma, preserve_range=True)
     for _ in range(steps):
-        blurred = gaussian_filter(blurred, sigma=sigma, multichannel=True, preserve_range=True)
+        blurred = gaussian_filter(blurred, sigma=sigma, preserve_range=True)
     # blurred = sp.ndimage.gaussian_filter(blurred, sigma=[5, 5, 1])
     # return blurred
     output_image = np.minimum(weight * blurred.astype(int) + img.astype(int), np.ones_like(img) * 255)

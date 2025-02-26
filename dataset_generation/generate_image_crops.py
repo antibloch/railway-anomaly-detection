@@ -62,8 +62,21 @@ def main(args):
             seg_orig_path = os.path.join(SEG_ORIG_PATH, f"{image_name}{SEG_ORIG_EXTENSION}")
             image_orig = cv2.imread(image_orig_path)
             seg_orig = cv2.imread(seg_orig_path, 0)  # grayscale mode
+
+        elif MODE == "rs19":    
+            image_orig =os.path.join(IMAGE_PATH, f"{image_name}{IMAGE_EXTENSION}")
+            seg_orig = os.path.join(SEG_PATH, f"{image_name}{SEG_EXTENSION}")
+
+            image_orig = cv2.imread(image_orig)
+
+            seg_orig = cv2.imread(seg_orig, 0)  # grayscale mode
+
+
+
         with open(json_path) as json_file:
             json_data = json.load(json_file)
+
+  
         # Create image crops from visualization_image
         visualization_image, cropped_images, cropped_segmentations, cropped_orig_images, cropped_orig_segmentations, frame \
             = create_image_crops(args, json_data, image, seg, image_orig, seg_orig)
@@ -89,8 +102,9 @@ def create_image_crops(args, input_json, input_image, input_segmentation, input_
     visualization_image = input_image.copy()
     cropped_images = list()
     cropped_segmentations = list()
-    cropped_orig_images = list() if MODE == "fishyrails" else None
-    cropped_orig_segmentations = list() if MODE == "fishyrails" else None
+    cropped_orig_images = list()
+    cropped_orig_segmentations = list()
+
 
     # Extract area between rails
     if MODE == "rs19":
@@ -102,7 +116,7 @@ def create_image_crops(args, input_json, input_image, input_segmentation, input_
     # segmentation_mask = segmentation_mask.astype(np.uint8)
     # If there are no real rails in visualization_image (tram rails do not count), ignore visualization_image
     if np.count_nonzero(np.isin(input_segmentation, [12])) == 0 and MODE == "rs19":
-        return input_image, cropped_images, cropped_segmentations, input_json["frame"]
+        return visualization_image, cropped_images, cropped_segmentations, cropped_orig_images, cropped_orig_segmentations, input_json["frame"]
 
     # Extract rails
     for obj in input_json["objects"]:
@@ -259,7 +273,7 @@ if __name__ == "__main__":
                         default="/path/to/rs19_val",
                         help='rs19_val or fishyrails directory')
     args = parser.parse_args()
-    MODE = "fishyrails"  # "rs19" or "fishyrails"
+    MODE = args.mode  # "rs19" or "fishyrails"
 
     if MODE == "rs19":
         IMAGE_PATH = os.path.join(args.input_path, "jpgs/rs19_val")  # jpg
