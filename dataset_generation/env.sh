@@ -35,5 +35,9 @@ pip install timm opacus
 
 pip install kagglehub
 
-
 pip install kaggle
+
+pip install tensorboard
+
+pip install torchmetrics
+pip install torchgeometry 
