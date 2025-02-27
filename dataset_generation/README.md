@@ -64,5 +64,5 @@ python fishyrailscropped2hdf5.py --input_path FishyrailsCroppedv1 --output_name 
 
 ```
 # Convert dataset to hdf5
-python imagenet2hdf5.py --input_path ImageNet/ILSVRC/Data/CLS-LOC/train --output_name ImageNet
+python imagenet2hdf5.py --input_path ImageNet/ILSVRC/Data/CLS-LOC --output_name ImageNet
 ```
