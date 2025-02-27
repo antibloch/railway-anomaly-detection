@@ -30,7 +30,11 @@ rm -rf mv VOC2012/VOC2012 .
 
 ### ImageNet
 ```
+mkdir ImageNet
+cd ImageNet
 kaggle competitions download -c imagenet-object-localization-challenge
+
+unzip imagenet-object-localization-challenge.zip
 ```
 
 ## Dataset Creation
@@ -57,7 +61,8 @@ python fishyrailscropped2hdf5.py --input_path FishyrailsCroppedv1 --output_name 
 ```
 
 ### ImageNet
+
 ```
 # Convert dataset to hdf5
-python imagenet2hdf5.py --input_path /path/to/datasets/ImageNet --output_name ImageNet
+python imagenet2hdf5.py --input_path ImageNet/ILSVRC/Data/CLS-LOC/train --output_name ImageNet
 ```
