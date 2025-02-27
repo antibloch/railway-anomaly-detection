@@ -15,7 +15,7 @@ mkdir patch_classification/datasets
 mv dataset_generation/Railsem19Croppedv1/Railsem19Croppedv1.h5 patch_classification/datasets
 mv dataset_generation/FishyrailsCroppedv1/FishyrailsCroppedv1.h5 patch_classification/datasets
 
-mv dataset_generation/ImageNet/ImageNet.h5 patch_classification/datasets
+mv dataset_generation/ImageNet/ILSVRC/Data/CLS-LOC/ImageNet.h5 patch_classification/datasets
 ```
 
 If you only want to re-train or evaluate some of the networks, we provide all the trained models that are used in this README. 
