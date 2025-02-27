@@ -327,7 +327,7 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                     # Visualize Output Patchseg
                     output_seg_vis_gray = output_seg / torch.max(output_seg) * 255
 
-                    output_seg_vis_gray = output_seg_vis_gray.cpu().numpy().astype(np.uint8)
+                    # output_seg_vis_gray = output_seg_vis_gray.cpu().numpy().astype(np.uint8)
                     # plt.imshow(output_seg_vis_gray)
                     # plt.show()
                   
