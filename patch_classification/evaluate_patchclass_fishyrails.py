@@ -144,6 +144,10 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                 # Inference
                 if "patchclassmodel" in args.model:
                     with torch.no_grad():
+                        # print(input_seg.shape)
+                        
+                        # print(model)
+                        # sdf
                         output_seg = model(input_seg)["out"]
                         output_seg = nn.functional.softmax(output_seg, dim=1)
                         output_seg = output_seg[0, 0, ::]
@@ -223,6 +227,7 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                     # Compute whether an obstacle can be found in seg output based on patch density:
                     output_seg_masked = output_seg.clone()
                     output_seg_masked[torch.logical_not(evaluation_mask)] = 0
+                    kernel = kernel.cuda() if args.device == "cuda" else kernel
                     patch_density = torch.nn.functional.conv2d(output_seg_masked.unsqueeze(0).unsqueeze(1), kernel, padding='same')
                     max_patch_density = torch.max(patch_density)
                     patch_density[patch_density <= thr] = 0
@@ -234,6 +239,11 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                         x = x.repeat(224, 1)
                         y = torch.linspace(0, 223, steps=224).unsqueeze(1)
                         y = y.repeat(1, 224)
+
+                        x = x.cuda() if args.device == "cuda" else x
+                        y = y.cuda() if args.device == "cuda" else y
+
+
                         centroid_x = int(
                             torch.floor(torch.sum(patch_density * x) / torch.sum(patch_density)).type(torch.LongTensor))
                         centroid_y = int(
@@ -534,7 +544,9 @@ def main(args):
         print("No seg model!")
 
     if model:
+
         model.to(device)
+
         checkpoint = torch.load(args.checkpoint, map_location="cpu")
         model.load_state_dict(checkpoint["model"], strict=False)
 
@@ -548,7 +560,7 @@ def get_args_parser(add_help=True):
     parser = argparse.ArgumentParser(description="PyTorch Segmentation Training", add_help=add_help)
 
     parser.add_argument("--data_path", default="./datasets/FishyrailsCroppedDebug/FishyrailsCroppedDebug.h5", type=str, help="dataset path")
-    parser.add_argument("--model", default="deeplabv3_resnet50", type=str, help="model name")
+    parser.add_argument("--model", default="patchclassmodel_patch6", type=str, help="model name")
     parser.add_argument("--output_path", default="./evaluation", type=str, help="output directory")
     parser.add_argument("--device", default="cpu", type=str, help="device (Use cuda or cpu)")
     parser.add_argument("--checkpoint", default="./trained_models/patchclass_model_10.pth", type=str,

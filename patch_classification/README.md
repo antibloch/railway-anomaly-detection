@@ -147,7 +147,7 @@ python create_ae_dataset.py --input_path ./datasets/Railsem19Croppedv1.h5 --chec
 These are commands for training our PatchClass / PatchDiff models for a patch size of K_p = 21. For other patch sizes, have a look at ablation_study_runs/runs_patchclass.sh 
 ```
 # PatchClass21
-python train_patchclass.py --device cuda --lr 0.1 --batch_size 32 --output_dir ./trained_models --data_path ./datasets/Railsem19CroppedGANv1.h5 --data_path_in ./datasets/ImageNet.h5 --model patchclassmodel --stages 1 --save_freq 1 --optimize_with_mask 1 --use_gan 0 --run_name patchclass_21
+
 
 # PatchDiff21 (MSE)
 python train_patchclass.py --device cuda --lr 0.1 --batch_size 32 --output_dir ./trained_models --data_path ./datasets/Railsem19CroppedMSEv1.h5 --data_path_in ./datasets/ImageNet.h5 --model patchclassmodel --stages 1 --save_freq 1 --optimize_with_mask 1 --use_gan 1 --run_name patchdiff_21_mse
@@ -182,10 +182,11 @@ cp ./trained_models/patchdiff_21_gan+hist_DATE_TIME/model_20.pth ./trained_model
 The final models can be evaluated with the following commands. ROC AUC and F1 score are reported in evaluations/RUNNAME/output.txt, visualizations for theta_visualize are provided in evaluations/RUNNAME/ . K_d can be changed with the respective argument. For different patch sizes K_p, have a look at evaluations_patchclass.sh.
 ```
 # PatchClass21 
-python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch3 --stages 1 --k_d 11 --theta_visualize 0.95 --checkpoint ./trained_models/patchclass_21_model_20.pth --ae_model none --output_path ./evaluations/patchclass_21
+
+
 
 # PatchDiff21 (MSE)
-python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch6 --stages 1 --k_d 7 --theta_visualize 0.9 --checkpoint ./trained_models/patchdiff_21_mse_model_25.pth --ae_checkpoint ./trained_models/ae_mse_model_199.pth --output_path ./evaluations/patchdiff_21_mse
+python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch3 --stages 1 --k_d 11 --theta_visualize 0.95 --checkpoint ./trained_models/patchdiff_21_mse_20250227_122154/model_10.pth --ae_model "AeSegParam02_8810" --output_path ./evaluations/patchclass_21 --model "patchclassmodel_patch6" --ae_checkpoint ./trained_models/ae_mse_20250226/model_190.pth
 
 # PatchDiff21 (SSIM)
 python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch6 --stages 1 --k_d 7 --theta_visualize 0.95 --checkpoint ./trained_models/patchdiff_21_ssim_model_20.pth --ae_checkpoint ./trained_models/ae_ssim_model_199.pth --output_path ./evaluations/patchdiff_21_ssim

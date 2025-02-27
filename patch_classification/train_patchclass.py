@@ -233,6 +233,8 @@ def main(args):
     start_time = time.time()
 
     print("Starting training ... ")
+
+
     for epoch in range(args.start_epoch, args.epochs):
         counter["epoch"] = epoch
         train_one_epoch(args, model, criterion, optimizer, data_loader, device, epoch,
