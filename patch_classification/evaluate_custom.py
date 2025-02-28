@@ -19,6 +19,207 @@ from matplotlib import pyplot as plt
 from patchclass_networks import PatchClassModel, PatchSegModelLight
 from torchvision.transforms import functional as F
 import cv2
+import time
+from skimage.filters import sato
+from skimage import io
+
+
+
+
+
+def min_distance_between_contours(contour1, contour2):
+    min_dist = float('inf')
+    
+    for pt1 in contour1:
+        for pt2 in contour2:
+            dist = np.linalg.norm(pt1[0] - pt2[0])  # Euclidean distance
+            if dist < min_dist:
+                min_dist = dist
+
+    return min_dist
+
+
+
+def process_image(image_a):
+    # Ensure the image is already grayscale and uint8
+    assert image_a.dtype == np.uint8, "Image must be of type uint8"
+    assert len(image_a.shape) == 2, "Image must be grayscale with shape (224, 224)"
+
+    # Apply Canny Edge Detection directly
+    edged = cv2.Canny(image_a, 30, 200)
+
+    # Find contours
+    contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    print("Number of Contours found =", len(contours))
+
+    # Convert grayscale image to BGR for visualization
+    image_with_contours = cv2.cvtColor(image_a, cv2.COLOR_GRAY2BGR)
+    
+    # Draw contours on the converted image
+    cv2.drawContours(image_with_contours, contours, -1, (0, 255, 0), 1)  # Thickness = 1 for clarity
+
+    # Display images using matplotlib
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].imshow(edged, cmap='gray')
+    ax[0].set_title("Canny Edges")
+    ax[0].axis('off')
+
+    ax[1].imshow(cv2.cvtColor(image_with_contours, cv2.COLOR_BGR2RGB))
+    ax[1].set_title("Contours on Image")
+    ax[1].axis('off')
+
+    plt.show()
+
+    return image_with_contours 
+
+
+def intersection_img(image_a, image_b):
+    return np.logical_and(image_a == 255, image_b == 255).astype(np.uint8) * 255
+
+
+def union_img(image_a, image_b):
+    return np.logical_or(image_a == 255, image_b == 255).astype(np.uint8) * 255
+
+
+def residual_img(image_a, image_b):
+    union = union_img(image_a, image_b)
+    intersection = intersection_img(image_a, image_b)
+    return cv2.subtract(union, intersection)
+
+
+def compliment_img(image_a, image_b):
+    intersection = intersection_img(image_a, image_b)
+    return cv2.subtract(image_a, intersection)
+
+
+
+
+def get_tubes(ae_image):
+    ae_image_grey = cv2.cvtColor(ae_image, cv2.COLOR_RGB2GRAY)
+
+    g_otsu, _, l_img = get_components(ae_image_grey, p = 0.15)
+    g_otsu = (g_otsu > 0).astype(np.uint8)
+    tube_image = sato(g_otsu, sigmas=range(1, 5, 2), black_ridges=False)
+
+    tube_image_norm = cv2.normalize(tube_image, None, 0, 255, cv2.NORM_MINMAX)
+
+    # Convert to uint8 (OpenCV requires uint8 for thresholding)
+    tube_image_uint8 = np.uint8(tube_image_norm)
+    
+    p = 0.55
+    _ , ae_tube = cv2.threshold(tube_image_uint8,int(p*255),255,cv2.THRESH_BINARY)
+
+    return ae_tube
+
+
+def get_components(output_seg_np, p = 0.55):
+
+    _,greyscale_otsu = cv2.threshold(output_seg_np,int(p*255),255,cv2.THRESH_BINARY)
+    
+
+    binary_image = (greyscale_otsu > 0).astype(np.uint8)  # Convert 255 to 1
+    num_labels, labels = cv2.connectedComponents(binary_image)
+    # Map component labels to hue val
+    label_hue = np.uint8(179*labels/np.max(labels))
+    blank_ch = 255*np.ones_like(label_hue)
+    labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+
+    # cvt to BGR for display
+    labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+
+    # set bg label to black
+    labeled_img[label_hue==0] = 0
+
+    original_labelled = labeled_img.copy()
+
+    uniques= np.unique(labeled_img)
+
+    sizes = []
+    for i in range(1, num_labels):  # start from 1 to ignore the background
+        size = np.sum(labels == i)
+        sizes.append(size)
+    idx_max = np.argmax(sizes) + 1  # add 1 because sizes index starts from 0
+    max_label = idx_max
+
+    labeled_img[labels != max_label] = 0
+    labeled_img[labels == max_label] = 255
+
+    labelled_img = cv2.cvtColor(labeled_img, cv2.COLOR_BGR2GRAY)
+
+    return greyscale_otsu, labelled_img, original_labelled
+
+
+
+
+def find_object_in_rails(rail_image, object_img, threshold_intersect= 2 , threshold_std = 0.9):
+    
+    rail_image_ref = rail_image.copy()
+    object_img_ref = object_img.copy()
+
+    # find connected components in the object image
+    num_labels, labels = cv2.connectedComponents(object_img)
+
+    # find connected components in the rail image
+    num_labels_rail, labels_rail = cv2.connectedComponents(rail_image)
+
+
+    binary_image = (rail_image > 0).astype(np.uint8)  # Convert 255 to 1
+    num_labels, labels = cv2.connectedComponents(binary_image)
+    # Map component labels to hue val
+    label_hue = np.uint8(179*labels/np.max(labels))
+    blank_ch = 255*np.ones_like(label_hue)
+    labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+
+    # cvt to BGR for display
+    labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+
+    # set bg label to black
+    labeled_img[label_hue==0] = 0
+
+
+    # Initialize pix_image as an empty image (all zeros)
+    pix_image = np.zeros_like(rail_image, dtype=np.uint8)
+    
+    
+    dilation_record_per_component = []
+    
+    
+    for i in range(1, num_labels):  # Start from 1 to ignore the background
+        pix_image[labels == i] = 255  # Set pixels belonging to label `i` to 255
+
+        dilation_kernel = np.ones((5, 5), np.uint8)  # 5x5 kernel of ones
+
+        for dil_amount in range(100):
+            if dil_amount > 0:
+                # Apply dilation
+                pix_image = cv2.dilate(pix_image, dilation_kernel, iterations=1)
+
+            amount_intersection = np.sum(intersection_img(pix_image, object_img)==255)
+
+            if amount_intersection > threshold_intersect:
+                dilation_record_per_component.append(dil_amount)
+                
+                break
+
+
+    std_dilations = np.std(dilation_record_per_component)
+
+    if std_dilations > threshold_std:
+        return True
+    
+    else:
+        return False
+    
+
+
+
+
+            
+
+
+
+
 
 def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=None, mean=None, std=None):
     if ae_model:
@@ -55,6 +256,45 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
 
     with torch.no_grad():
         for idx, (image_fishy, target_fishy, image_orig, target_orig) in enumerate(metric_logger.log_every(data_loader, 100, header)):
+
+            print(image_fishy.shape)
+            print(target_fishy.shape)
+            print(image_orig.shape)
+            print(target_orig.shape)
+
+            current_time = time.time()
+            
+            
+            image_curr = cv2.imread("sample_rail.jpeg")
+            image_curr = cv2.cvtColor(image_curr, cv2.COLOR_BGR2RGB)
+            image_curr_ref = image_curr.copy()
+            image_curr_ref = cv2.resize(image_curr_ref, (224, 224))
+
+
+            image_tensor = torch.from_numpy(image_curr.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
+
+            # image_tensor = image_tensor / 255.0
+            image_tensor = image_tensor / 255.0
+            image_tensor_ref= torchvision.transforms.functional.resize(image_tensor, (224, 224)).to(device)
+
+            image_tensor_ref = torchvision.transforms.functional.normalize(image_tensor_ref, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+
+            image_fishy = image_tensor_ref.clone()
+            image_orig = image_tensor_ref.clone()
+            target_fishy = torch.zeros_like(target_fishy)
+            target_orig = torch.zeros_like(target_orig)
+
+            # print(image_fishy.shape)
+            # print(target_fishy.shape)
+            # print(image_orig.shape)
+            # print(target_orig.shape)
+            # aslkjdj
+
+            # plt.imshow(image_curr)
+            # plt.show()
+
+
+
             print(f"Image {idx} ...")
             if idx > args.max_num_images:
                 break
@@ -66,7 +306,6 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                     image, target_seg = image_fishy.to(device), target_fishy.to(device)
                 elif mode == "orig":
                     image, target_seg = image_orig.to(device), target_orig.to(device)
-
 
                 target_seg_orig = target_orig.clone().to(device)
 
@@ -89,15 +328,15 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
 
                 if ae_model and args.ae_model != "patchsegmodellight":
 
-                    image_curr = cv2.imread("sample_rail.jpeg")
-                    image_curr = cv2.cvtColor(image_curr, cv2.COLOR_BGR2RGB)
+                    # image_curr = cv2.imread("sample_rail.jpeg")
+                    # image_curr = cv2.cvtColor(image_curr, cv2.COLOR_BGR2RGB)
 
 
-                    image_tensor = torch.from_numpy(image_curr.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
+                    # image_tensor = torch.from_numpy(image_curr.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
 
+                    # # image_tensor = image_tensor / 255.0
                     # image_tensor = image_tensor / 255.0
-                    image_tensor = image_tensor / 255.0
-                    image= torchvision.transforms.functional.resize(image_tensor, (224, 224)).to(device)
+                    # image= torchvision.transforms.functional.resize(image_tensor, (224, 224)).to(device)
 
 
 
@@ -105,6 +344,17 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                     with torch.no_grad():
                         outputs = ae_model(image)
                     output_ae = outputs["out_aa"]
+
+
+                    ae_tensor= output_ae
+
+                    ae_image = ae_tensor[0].permute(1, 2, 0).cpu().numpy()
+
+                    ae_image = (ae_image * 255).clip(0, 255).astype(np.uint8)
+
+                    # plt.imshow(ae_image)
+                    # plt.show()
+                    # sdfhn
 
                     # Post-process AE image for PatchSeg
                     if args.g_act == "tanh":
@@ -215,10 +465,122 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                         output_seg = torch.mean(output_seg, dim=0)
 
                 # Make sure segmentation outputs are in range (0, 1):
-                output_seg = output_seg / overall_max
+                
 
-                # plt.imshow(output_seg.cpu().numpy())
-                # plt.show()
+                kernel = torch.tensor(
+                    np.ones((args.k_d, args.k_d)) * 1 / (args.k_d * args.k_d)
+                ).view(1, 1, args.k_d, args.k_d).type(torch.FloatTensor).cuda()
+
+                # Ensure output_seg has correct shape: (batch_size, channels, height, width)
+                if output_seg.dim() == 3:  # If missing batch dimension
+                    output_seg = output_seg.unsqueeze(0)  # Add batch dim
+
+                if output_seg.dim() == 2:  # If missing both batch & channel dims
+                    output_seg = output_seg.unsqueeze(0).unsqueeze(0)
+
+                # Apply convolution
+                output_seg = torch.nn.functional.conv2d(output_seg, kernel, padding=args.k_d // 2)
+
+                output_seg = output_seg.squeeze().squeeze()
+
+
+                output_seg = (output_seg - torch.min(output_seg))/ (torch.max(output_seg)-torch.min(output_seg))
+
+
+                # output_seg [output_seg > 0.0] = 1.0
+                # output_seg [output_seg <= 0.0] = 0.0
+                final_time = time.time()
+
+                print(f"Time Inference: {final_time-current_time}")
+
+                output_seg_np=output_seg.cpu().numpy()
+                output_seg_np = (output_seg_np * 255).clip(0, 255)
+
+                greyscale_otsu, labelled_img, _ = get_components(output_seg_np)
+
+
+                # kernel = np.ones((5, 5), np.uint8)  # 5x5 kernel of ones
+
+                # # Apply dilation
+                # greyscale_otsu = cv2.dilate(greyscale_otsu, kernel, iterations=1)
+
+                image_curr_ref_grey = cv2.cvtColor(image_curr_ref, cv2.COLOR_RGB2GRAY)
+
+                ae_tube = get_tubes(ae_image)
+
+                things = process_image(ae_tube)
+                
+
+
+
+                # print(np.min(ae_tube))
+                # skd
+
+
+                intersection = intersection_img(ae_tube, labelled_img)
+                union = union_img(ae_tube, labelled_img)
+
+                residual = residual_img(ae_tube, labelled_img)
+
+                comp = compliment_img(ae_tube, labelled_img)
+
+                plt.imshow(union,cmap='gray')
+                plt.show()
+
+
+                sdfjg
+
+
+
+
+                
+
+
+                plt.imshow(ae_image_grey)
+                plt.show()
+
+                plt.imshow(g_otsu)
+                plt.show()
+
+                plt.imshow(tube_image)
+                plt.show()
+
+                plt.imshow(g_tube)
+                plt.show()
+
+                sdjif
+
+
+                differential_image = np.abs(image_curr_ref_grey- ae_image_grey)
+
+    
+         
+                plt.figure()
+                plt.subplot(1, 5, 1)
+                
+                plt.imshow(image_curr_ref)
+                plt.title("Original Image")
+                
+                plt.subplot(1, 5, 2)
+                plt.imshow(ae_image)
+                plt.title("Autoencoder Output")
+
+                plt.subplot(1, 5, 3)
+                plt.imshow(differential_image, cmap='gray')
+                plt.title("Autoencoder - Original")
+
+                plt.subplot(1, 5, 4)
+                plt.imshow(output_seg_np, cmap='gray')
+                plt.title("Segmented Image")
+
+                plt.subplot(1, 5, 5)
+                plt.imshow(labelled_img, cmap='gray')
+                plt.title("Post Processed Image")
+
+                plt.show()
+
+                
+                sjkd
 
 
                 # Check if segmentation outputs are in range (0, 1):
@@ -367,8 +729,8 @@ def evaluate(args, ae_model, model, data_loader, device, num_classes, vis_path=N
                         draw.text((0, 0), f"Max patch %: {max_patch_density:.2f} --> 0", (255, 0, 0))
 
 
-                    plt.imshow(output_seg_masked_vis)
-                    plt.show()
+                    # plt.imshow(output_seg_masked_vis)
+                    # plt.show()
                     visualization_images.append(output_seg_masked_vis)
 
                     # Visualize target segmentation
