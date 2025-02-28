@@ -198,6 +198,14 @@ python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/Fi
 python evaluate_patchclass_fishyrails.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch6 --stages 1 --k_d 7 --theta_visualize 0.95 --checkpoint ./trained_models/patchdiff_21_gan+hist_model_20.pth --ae_checkpoint ./trained_models/ae_gan+hist_model_199.pth --output_path ./evaluations/patchdiff_21_gan+hist
 ```
 
+
+## Evaluate PatchDiff on Sample Image
+
+```
+python evaluate_custom.py --device cuda --data_path ./datasets/FishyrailsCroppedv1.h5 --model patchclassmodel_patch3 --stages 1 --k_d 11 --theta_visualize 0.95 --checkpoint ./trained_models/patchdiff_21_mse_20250227_122154/model_10.pth --ae_model "AeSegParam02_8810" --output_path ./evaluations/patchclass_21 --model "patchclassmodel_patch6" --ae_checkpoint ./trained_models/ae_mse_20250226/model_190.pth
+
+```
+
 ## Train and Evaluate Baselines
 
 ### DeeplabV3 Standard Semantic Segmentation
