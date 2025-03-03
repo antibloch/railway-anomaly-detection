@@ -4,6 +4,9 @@ import argparse
 import h5py
 from PIL import Image
 
+
+
+
 def main(args):
     # load all image files, sorting them to ensure that they are aligned
     im_fishy_path = os.path.join(args.input_path, "images_fishy")
