@@ -1,5 +1,7 @@
 # Railway Anomaly Detection
-Local and Global Information in Obstacle Detection on Railway Tracks
+[Doc](overview_of_improvement.pdf)
+
+This work is an improvement fork of the code associated with "Local and Global Information in Obstacle Detection on Railway Tracks". Here besides segmentation map, an image based classifier robustly determines whether the object falls within rail area or not.
 
 
 ## Abstract
