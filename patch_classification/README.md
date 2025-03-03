@@ -31,29 +31,7 @@ cp /path/to/trained_models/* trained_models # alternatively, use symlink
 mkdir evaluations
 ```
 
-### Virtual Environment (using Python 3.8)
 
-```
-cd railway-anomaly-detection/patch_classification 
-mkdir venv
-python3 -m venv venv/patch_classification
-source venv/patch_classification/bin/activate
-pip install opencv-python
-pip install scipy
-pip install torch
-pip install torchvision # different version might be required for GPU
-pip install wheel
-pip install tensorboard
-pip install h5py
-pip install torchmetrics
-pip install torchgeometry 
-pip install scikit-learn
-pip install scikit-image
-pip install matplotlib
-# Add to Jupyter
-pip install notebook
-python -m ipykernel install --user --name=patch_classification
-```
 
 ## Create masks for Real-World dataset
 First, create a directory with images similar to the real_world_dataset_raw directory. 
