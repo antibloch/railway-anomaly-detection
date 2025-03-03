@@ -160,12 +160,6 @@ def find_object_in_rails(rail_image, object_img, threshold_intersect= 2 , thresh
     rail_image_ref = rail_image.copy()
     object_img_ref = object_img.copy()
 
-    # find connected components in the object image
-    num_labels, labels = cv2.connectedComponents(object_img)
-
-    # find connected components in the rail image
-    num_labels_rail, labels_rail = cv2.connectedComponents(rail_image)
-
 
     binary_image = (rail_image > 0).astype(np.uint8)  # Convert 255 to 1
     num_labels, labels = cv2.connectedComponents(binary_image)
